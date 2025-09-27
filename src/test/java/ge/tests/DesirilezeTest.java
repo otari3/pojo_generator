@@ -1,24 +1,25 @@
 package ge.tests;
 
+import java.nio.file.Path;
 import java.util.Map;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import ge.Util.Util;
+import ge.data.Constants;
 import ge.data.DataSuplier;
 import ge.pojo.Pojo;
 
 public class DesirilezeTest {
-  
+  String testPath = "src/test/java/ge/testClasses";
+  String testPackage = "ge.testClasses";
   @Test(dataProviderClass = DataSuplier.class,dataProvider = "simpleJsonData")
-  public void simpleJsonTest(String json,Map<String,String> expectedResults,String name){ 
+  public void simpleJsonTest(String json,Map<String,String> expectedResults){ 
     Pojo pojo = new Pojo();
-    pojo.deserialize(json, name);
-    for(String keys:expectedResults.keySet()){
-     String expctedResults = Util.formatString(expectedResults.get(keys));
-     String actualResults = Util.formatString(pojo.results.get(keys));
+     pojo.deserialize(json, Constants.SIMPLE_JSON_FILE_NAME,testPackage,testPath);
+     String expctedResults = Util.formatString(expectedResults.get(Constants.SIMPLE_JSON_FILE_NAME));
+     String actualResults = Util.formatString(Util.getFileContent(Path.of(testPath+"/%s.java".formatted(Constants.SIMPLE_JSON_FILE_NAME))));
      Assert.assertEquals(actualResults, expctedResults);
-    }
   }
 }

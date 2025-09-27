@@ -5,7 +5,8 @@ import ge.pojo.Pojo;
 
 public class Main {
   public static void main(String[] args) {
-    Pojo pojo = new Pojo();
-    pojo.deserialize(Constants.simpleJsonObjet,"RandomName");
+  String testPath = "src/test/java/ge/testClasses";
+  String testPackage = "ge.testClasses";
+    new Pojo().deserialize(Constants.oneNestedJson, Constants.ONE_NESTED_JSON_FILE_NAME,testPackage, testPath);
   }
 }
