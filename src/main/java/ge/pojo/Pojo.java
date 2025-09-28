@@ -4,8 +4,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+
+import ge.Util.Tuple;
+
+
 
 
 
@@ -13,38 +16,45 @@ public class Pojo {
   private String classDeclaration = "public class %s { \n%s\n }";
 
   public void deserialize(String json,String name,String packageStr,String path){
-    deserializeHelper(json,name,packageStr,path);
+    deserializeHelper(json,name,packageStr,path,1);
   }
 
-  private String deserializeHelper(String json,String name,String packageStr,String path){ 
-    String[] parsedJson = json.replaceAll("[\n|\\s|\"]", "").split(",");
+  private Tuple deserializeHelper(String json,String name,String packageStr,String path,int startIndex){ 
+    char[] parsedJson = json.replaceAll("[\n|\\s|\"]", "").toCharArray();
     List<String> fields = new ArrayList<>();
     List<String> classInformation = new ArrayList<>(List.of("package %s;\n".formatted(packageStr)));
-    System.out.println(Arrays.toString(parsedJson));
-    System.out.println(parsedJson[2]);
-    for(int i = 0;i<parsedJson.length;i++){ 
-      String curr =parsedJson[i];
-      if (isJsonObject(json)) {
-        if (i==0) {
-          curr = curr.substring(1, curr.length());
+    String curr = "";
+    int index = startIndex;
+    for(int i = index;i<parsedJson.length;i++){ 
+      char currVal = parsedJson[i];
+      if (currVal==',') {
+        String[] nameANDtype = curr.split(":");
+        fields.add("  "+formatField(nameANDtype[0], getTypeWithString(nameANDtype[1])));
+        curr = "";
+      }else if (currVal==':') {
+        Tuple tuple = null;
+        if (parsedJson[i+1]=='{') {
+          tuple = deserializeHelper(json, changeFirstLetterToUpperCase(curr), packageStr, path, i+2);
+            i = tuple.index;
+            curr+=currVal;
+            curr+=tuple.value;
+        }else{  
+          curr+=currVal;
         }
-        if (i==parsedJson.length-1) {
-          curr = curr.substring(1, curr.length()-1);
-        }
+      } 
+      else if (currVal=='}') {
+        index = i;
+        break;
+      }else{  
+        curr+=currVal;
       }
-      String[] fieldNamesAndTypes = curr.split(":");
-      if (isJsonObject(fieldNamesAndTypes[1])) {
-        String field = "  "+formatField(fieldNamesAndTypes[0],  
-                            deserializeHelper(fieldNamesAndTypes[1], changeFirstLetterToUpperCase(fieldNamesAndTypes[0]), packageStr, path));
-         fields.add(field);
-      }
-      String field = "  "+formatField(fieldNamesAndTypes[0], getTypeWithString(fieldNamesAndTypes[1]));
-      fields.add(field);
     }
+    String[] nameANDtype = curr.split(":");
+    fields.add("  "+formatField(nameANDtype[0], getTypeWithString(nameANDtype[1])));
     String classBlock = String.join("", classInformation)+classDeclaration.formatted(name,String.join("\n", fields));
     Path fullPath = Path.of(path+"/%s.java".formatted(name));
     createFile(fullPath, classBlock);
-    return name;
+    return new Tuple(index, name);
   }
 
   private String getTypeWithString(String jsonType){  
@@ -54,9 +64,8 @@ public class Pojo {
       return "String";
     }else if (jsonType.equals("boolean")) {
       return "Boolean";
-    }else{  
-      throw new RuntimeException("Type: "+jsonType+" Does not exists In java");
     }
+    return jsonType;
   }
   private void createFile(Path path,String code){  
     try(FileWriter fileWriter = new FileWriter(path.toFile())){ 
@@ -68,14 +77,6 @@ public class Pojo {
   private String formatField(String fieldName,String fieldType){
     String fieldDeclartionString = "public %s %s;";
     return fieldDeclartionString.formatted(fieldType,fieldName);
-  }
-  private boolean isJsonObject(String json){ 
-    String start = json.substring(0, 1);
-    String end = json.substring(json.length()-1, json.length());
-    if (end.equals(",")) {
-      end = json.substring(json.length()-2, json.length()-1);
-    }
-    return start.equals("{") && end.equals("}");
   }
   private String changeFirstLetterToUpperCase(String txt){  
     char[] currtxt = txt.toCharArray();
